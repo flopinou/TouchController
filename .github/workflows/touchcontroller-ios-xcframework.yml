@@ -1,11 +1,9 @@
-name: Build TouchController iOS XCFramework
-on: [ pull_request, push ]
-
+name: Build TouchController iOS Framework
+on: [ pull_request, push, workflow_dispatch ]
 jobs:
   build:
-    name: Build iOS XCFramework
+    name: Build iOS Dynamic Framework
     runs-on: macos-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -33,12 +31,19 @@ jobs:
           authorization: ${{ secrets.BAZEL_CACHE_AUTH }}
           downloader_cfg: ${{ vars.BAZEL_DOWNLOADER_CONFIG }}
           netrc: ${{ secrets.BAZEL_NETRC }}
+          
       - name: Build
         run: |
-          bazel build --verbose_failures --config=opt //touchcontroller/proxy/server/ios:ios_framework
+          bazel build --verbose_failures --config=opt --ios_multi_cpus=arm64 //touchcontroller/proxy/server/ios:touchcontroller_proxy
+          
+      - name: Extract and format Dylib
+        run: |
+          unzip bazel-bin/touchcontroller/proxy/server/ios/touchcontroller_proxy.zip -d temp_out
+          mv temp_out/touchcontroller_proxy.framework/touchcontroller_proxy libtouchcontroller_proxy.dylib
+          
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: touchcontroller_proxy.xcframework.zip
+          name: libtouchcontroller_proxy.dylib
           archive: false
-          path: bazel-bin/touchcontroller/proxy/server/ios/ios_framework.xcframework.zip
+          path: libtouchcontroller_proxy.dylib
